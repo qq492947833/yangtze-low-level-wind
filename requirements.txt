@@ -4,6 +4,7 @@ scipy
 pandas
 xarray
 netCDF4
+h5netcdf
 scikit-learn
 torch
 torchmetrics
@@ -23,6 +24,7 @@ Pillow
 PyMuPDF
 cartopy
 geopandas
+shapely
 geopy
 openpyxl
 shap

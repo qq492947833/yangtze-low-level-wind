@@ -20,9 +20,7 @@ def Auto_DA_TransUnet_pytorch(vy,vx,timestep,downnum,covnum,test_size=0.2,valid_
     from tqdm import tqdm
     warnings.filterwarnings('ignore')
     
-    if str(device) != 'cuda:0':
-        raise ValueError('Gradient experiment permits only explicit cuda:0')
-    devices = torch.device('cuda:0')
+    devices = torch.device(device)
     _gradient_runtime = globals().get('GRADIENT_RUNTIME')
     if _gradient_runtime is None:
         raise RuntimeError('Set network_adapter.GRADIENT_RUNTIME before execution')
@@ -959,9 +957,9 @@ def Auto_DA_TransUnet_pytorch(vy,vx,timestep,downnum,covnum,test_size=0.2,valid_
     if if_best_mode!='no':
         if k_fold!=None:
             for i in range(k_fold):
-                models[i].load_state_dict(torch.load(modelpath+'_'+str(i+1)+'.pth',map_location='cuda:0',weights_only=True))
+                models[i].load_state_dict(torch.load(modelpath+'_'+str(i+1)+'.pth',map_location=devices,weights_only=True))
         else:
-            model.load_state_dict(torch.load(modelpath+'.pth',map_location='cuda:0',weights_only=True))
+            model.load_state_dict(torch.load(modelpath+'.pth',map_location=devices,weights_only=True))
     if k_fold!=None:
         for i in range(k_fold):
             models[i].to(devices)
@@ -986,9 +984,9 @@ def Auto_DA_TransUnet_pytorch(vy,vx,timestep,downnum,covnum,test_size=0.2,valid_
     if if_best_mode!='no' and ifrandom_split!='all_test':
         if k_fold!=None:
             for i in range(k_fold):
-                opts[i].load_state_dict(torch.load(modelpath+'_'+str(i+1)+'_opt.pth',map_location='cuda:0',weights_only=True))
+                opts[i].load_state_dict(torch.load(modelpath+'_'+str(i+1)+'_opt.pth',map_location=devices,weights_only=True))
         else:
-            opt.load_state_dict(torch.load(modelpath+'_opt.pth',map_location='cuda:0',weights_only=True))
+            opt.load_state_dict(torch.load(modelpath+'_opt.pth',map_location=devices,weights_only=True))
     if if_print_model=='yes':
         if k_fold!=None:
             print(models[0])

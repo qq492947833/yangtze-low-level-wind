@@ -10,7 +10,10 @@ from matplotlib.colors import Normalize, ListedColormap
 from matplotlib.patches import Patch
 LEADS = (1, 2, 3, 4, 5, 6)
 LEVELS = np.array([850., 925., 1000.])
-RADAR_DIVISORS = None
+RADAR_DIVISORS = {
+    'horizontal': {'1-R': 1., 'RMSPE': .2, 'RMSE': 5., 'MAE': 5.},
+    'vertical': {'1-R': .5, 'RMSPE': .5, 'RMSE': 1., 'MAE': 1.},
+}
 QUANTILES = (0.90, 0.95, 0.99)
 
 inputs = RESULTS / 'extreme_ETS_radar'

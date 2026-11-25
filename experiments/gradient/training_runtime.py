@@ -163,8 +163,10 @@ class GradientTrainingRuntime:
                     amp_enabled=False, input_tensor_dtype='torch.float32')
 
     def training_start(self, model, opt, early_stopping, epochs, model_device):
-        if str(model_device) != 'cuda:0' or any(p.device != torch.device('cuda:0') for p in model.parameters()):
-            raise RuntimeError('Model must reside solely on cuda:0')
+        self.device = next(model.parameters()).device
+        requested = torch.device(model_device)
+        if self.device.type != requested.type or (requested.index is not None and self.device.index != requested.index) or any(p.device != self.device for p in model.parameters()):
+            raise RuntimeError('All model parameters must reside on the configured training device')
         self._max_epochs = int(epochs)
         self._started_monotonic = time.monotonic()
         self.signature = self._model_signature(model)
@@ -181,7 +183,7 @@ class GradientTrainingRuntime:
                 raise RuntimeError('Checkpoint pointer does not identify an available authorized slot')
             if receipt['fingerprint'] != self.fingerprint or receipt['sha256'] != sha256(self.checkpoint_path):
                 raise RuntimeError('Checkpoint identity or SHA256 differs; refuse resume')
-            payload = torch.load(self.checkpoint_path, map_location='cuda:0', weights_only=False)
+            payload = torch.load(self.checkpoint_path, map_location=self.device, weights_only=False)
             required = {'identity','fingerprint','model_signature','precision','model','optimizer','early_stopping',
                         'epoch','best_epoch','rng','max_epochs','complete_epoch','terminal','epoch_metrics'}
             if not required.issubset(payload) or payload['complete_epoch'] is not True:
@@ -224,9 +226,11 @@ class GradientTrainingRuntime:
             random.setstate(rng['python'])
             np.random.set_state(rng['numpy'])
             # CPU RNG bytes are metadata, not CPU model training. map_location is
-            # explicitly cuda:0; byte states must be moved back for RNG APIs.
+            # the selected device; RNG APIs expect CPU byte tensors.
             torch.set_rng_state(rng['torch_cpu'].cpu())
-            torch.cuda.set_rng_state(rng['torch_cuda0'].cpu(), device='cuda:0')
+            if self.device.type == 'cuda':
+                saved_cuda_rng = rng.get('torch_cuda', rng.get('torch_cuda0'))
+                torch.cuda.set_rng_state(saved_cuda_rng.cpu(), device=self.device)
             terminal = bool(payload['terminal'])
             self._event('complete_epoch_state_restored', epoch=self.completed_epochs,
                         best_epoch=self.best_epoch, terminal=terminal,
@@ -264,7 +268,7 @@ class GradientTrainingRuntime:
                        complete_epoch=True, terminal=bool(early_stopping.early_stop or epoch >= self._max_epochs),
                        rng=dict(python=random.getstate(), numpy=np.random.get_state(),
                                 torch_cpu=torch.get_rng_state(),
-                                torch_cuda0=torch.cuda.get_rng_state(device='cuda:0')))
+                                torch_cuda=(torch.cuda.get_rng_state(self.device) if self.device.type == 'cuda' else None)))
         next_checkpoint = self.directory / ('complete_epoch_state_a.pt' if epoch % 2 else 'complete_epoch_state_b.pt')
         temporary = next_checkpoint.with_name(next_checkpoint.name + '.' + uuid.uuid4().hex + '.tmp')
         with temporary.open('xb') as handle:

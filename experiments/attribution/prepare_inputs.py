@@ -29,6 +29,8 @@ def main():
                  for k in ("vx_mean","vx_std","vy_mean","vy_std","prediction_input_mean","prediction_input_std")}
     arrays = {}
     with np.load(args.raw) as raw, torch.inference_mode():
+        for name in ("sample_pool_index","sample_init_time","sample_valid_time","background_init_time","background_pool_index","output_valid_mask"):
+            arrays[name] = raw[name]
         for group,key in [("background","background_values"),("sample","x_values")]:
             x = raw[key]
             if x.shape!=(100,11,3,49,73):

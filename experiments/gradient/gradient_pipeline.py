@@ -77,8 +77,9 @@ def resources():
                 process_rss=psutil.Process().memory_info().rss, time=now())
 
 def verify_device():
-    if DEVICE.startswith("cuda"):
-        torch.cuda.set_device(torch.device(DEVICE))
+    requested = torch.device(DEVICE)
+    if requested.type == "cuda" and requested.index is not None:
+        torch.cuda.set_device(requested)
     return {"device": DEVICE, "torch": str(torch.__version__)}
 
 def seed25():
@@ -141,7 +142,7 @@ def split_info(h,coords):
     else:np.savez_compressed(hr/'time_indices.npz',**indices)
     return info,all_times,test_times
 
-def normalize_stage1(h,rawx,rawy):
+def normalize_stage1(h,rawx,rawy,train_stop):
     # Same channel-major float32 assignment, transpose, reduction and arithmetic as reference.
     vx=np.array(rawx[:,:-h],dtype=np.float32,copy=True).transpose(1,2,3,0)
     vy=np.array(rawy[:,h:],dtype=np.float32,copy=True).transpose(1,2,3,0)
@@ -152,8 +153,6 @@ def normalize_stage1(h,rawx,rawy):
             assert int(old['forecast_hours'])==h and str(old['scope'])=='unique training input hours and aligned training labels, ddof=0'
             xm,xs,ym,ys=[old[k] for k in ('vx_mean','vx_std','vy_mean','vy_std')]
     else:
-        test_start = int((1 - COMMON["test_size"]) * len(vy))
-        train_stop = int((1 - COMMON["valid_size"] / (1 - COMMON["test_size"])) * test_start)
         train_x = vx[:train_stop + TIMESTEP - 1]
         train_y = vy[TIMESTEP - 1:train_stop + TIMESTEP - 1]
         ym=np.nanmean(train_y,axis=0);ys=np.nanstd(train_y,axis=0);xm=np.nanmean(train_x,axis=0);xs=np.nanstd(train_x,axis=0)
@@ -317,7 +316,7 @@ def run_stage1(h):
     if acceptance_existing(h,1):event('REUSE_ACCEPTED_STAGE',hour=h,stage=1);return
     began=time.monotonic();device=verify_device();hr=hour_root(h);sr=hr/'stage1';sr.mkdir(exist_ok=True)
     rawx,rawy,coords=source_cache();info,all_times,test_times=split_info(h,coords)
-    physical,vx,vy,xm,xs,ym,ys=normalize_stage1(h,rawx,rawy);del rawx,rawy;gc.collect()
+    physical,vx,vy,xm,xs,ym,ys=normalize_stage1(h,rawx,rawy,info['train_stop']);del rawx,rawy;gc.collect()
     from gradient_features import GradientFeatureBuilder
     from training_runtime import GradientTrainingRuntime
     import network_adapter as net
