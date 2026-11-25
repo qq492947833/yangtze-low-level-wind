@@ -1,0 +1,29 @@
+# Core training, data I/O and statistical baselines
+numpy
+scipy
+pandas
+xarray
+netCDF4
+scikit-learn
+torch
+torchmetrics
+joblib
+threadpoolctl
+numba
+psutil
+filelock
+python-dateutil
+tqdm
+
+# Notebooks, plotting, geography and supplementary experiments
+jupyterlab
+ipykernel
+matplotlib
+Pillow
+PyMuPDF
+cartopy
+geopandas
+geopy
+openpyxl
+shap
+optuna
